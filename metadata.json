@@ -1,0 +1,6 @@
+{
+  "name": "TMT Steel Coil WMS",
+  "description": "Enterprise Steel Coil Warehouse Management System with PostgreSQL atomic transactions, SAP Excel reference import, mobile-first floor receiving, and interactive 3D warehouse visualization.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
