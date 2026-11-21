@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SignInView } from './components/SignInView';
 import { AppShell } from './components/AppShell';
@@ -11,6 +11,55 @@ import { Warehouse3DView } from './components/warehouse3d/Warehouse3DView';
 import { SapImportCenterView } from './components/sapImport/SapImportCenterView';
 import { InboundReceivingView } from './components/inbound/InboundReceivingView';
 import type { NavSectionId } from './types/wms';
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  message: string;
+}
+
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      message: error?.message || 'เกิดข้อผิดพลาดระหว่างโหลดหน้าแอปพลิเคชัน',
+    };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('WMS Root ErrorBoundary caught:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0F172A] text-slate-100 flex items-center justify-center p-6">
+          <div className="max-w-lg w-full rounded-xl border border-slate-700 bg-slate-900/90 p-6 space-y-4">
+            <div className="text-base font-bold text-white">TMT Steel Coil WMS</div>
+            <div className="rounded-lg border border-red-500/40 bg-red-950/50 p-3 text-sm text-red-200 break-words">
+              {this.state.message}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-medium text-white transition-colors"
+            >
+              โหลดหน้าใหม่ (Reload)
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function WmsRouter() {
   const { firebaseUser, profile, loading } = useAuth();
@@ -74,8 +123,10 @@ function WmsRouter() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <WmsRouter />
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <WmsRouter />
+      </AuthProvider>
+    </AppErrorBoundary>
   );
 }

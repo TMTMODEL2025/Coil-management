@@ -18,6 +18,29 @@ async function getBearerToken(): Promise<string> {
   return currentUser.getIdToken();
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '');
+
+export function resolveApiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalizedPath}` : normalizedPath;
+}
+
+async function parseApiJsonOrThrow(res: Response): Promise<Record<string, unknown>> {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    if (!res.ok) {
+      throw new ApiError(
+        `ไม่พบ Backend API (${res.status}) — ระบบ WMS นี้ต้องเชื่อมต่อเซิร์ฟเวอร์ Express + PostgreSQL (ไม่สามารถรัน Backend บน GitHub Pages แบบ Static เพียงอย่างเดียวได้)`,
+        res.status
+      );
+    }
+    return {};
+  }
+  const payload = await res.json().catch(() => ({}));
+  return (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: {
@@ -36,13 +59,13 @@ export async function apiFetch<T>(
     serializedBody = JSON.stringify(options.body);
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method: options.method ?? 'GET',
     headers,
     body: serializedBody,
   });
 
-  const payload = await res.json().catch(() => ({}));
+  const payload = await parseApiJsonOrThrow(res);
   if (!res.ok) {
     const message =
       typeof payload?.error === 'string'
@@ -56,7 +79,7 @@ export async function apiFetch<T>(
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   const token = await getBearerToken();
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -64,7 +87,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
     body: formData,
   });
 
-  const payload = await res.json().catch(() => ({}));
+  const payload = await parseApiJsonOrThrow(res);
   if (!res.ok) {
     const message =
       typeof payload?.error === 'string'
@@ -78,7 +101,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
 
 export async function apiDownloadBlob(path: string, fallbackFilename: string): Promise<void> {
   const token = await getBearerToken();
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -86,7 +109,7 @@ export async function apiDownloadBlob(path: string, fallbackFilename: string): P
   });
 
   if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
+    const payload = await parseApiJsonOrThrow(res);
     const message =
       typeof payload?.error === 'string'
         ? payload.error

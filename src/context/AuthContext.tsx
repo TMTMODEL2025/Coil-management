@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { auth, googleAuthProvider } from '../lib/firebase';
-import { apiFetch } from '../lib/api';
+import { apiFetch, resolveApiUrl } from '../lib/api';
 import type {
   WarehouseRealtimeEvent,
   WarehouseRealtimeEventName,
@@ -85,7 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { ticket } = await apiFetch<{ ticket: string }>('/api/realtime/ticket', {
         method: 'POST',
       });
-      const es = new EventSource(`/api/realtime/events?ticket=${encodeURIComponent(ticket)}`);
+      const es = new EventSource(
+        resolveApiUrl(`/api/realtime/events?ticket=${encodeURIComponent(ticket)}`)
+      );
       eventSourceRef.current = es;
 
       es.addEventListener('connected', (evt) => {
@@ -185,11 +187,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, googleAuthProvider);
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'การเข้าสู่ระบบด้วย Google ถูกยกเลิกหรือไม่สำเร็จ';
-      setAuthError(msg);
+      const code =
+        err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code) : '';
+      if (code === 'auth/unauthorized-domain') {
+        setAuthError(
+          `โดเมน ${window.location.hostname} ยังไม่ได้รับอนุญาตใน Firebase Authentication (กรุณาเพิ่มโดเมนนี้ใน Firebase Console → Authentication → Settings → Authorized domains)`
+        );
+      } else {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'การเข้าสู่ระบบด้วย Google ถูกยกเลิกหรือไม่สำเร็จ';
+        setAuthError(msg);
+      }
     }
   }, []);
 
