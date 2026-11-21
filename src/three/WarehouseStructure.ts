@@ -154,9 +154,8 @@ export class WarehouseStructure {
     const halfD = depthM / 2 - 1.4;
     const colGeo = new THREE.BoxGeometry(0.52, heightM, 0.52);
     const baseGeo = new THREE.BoxGeometry(0.9, 0.45, 0.9);
-    const trussGeo = new THREE.BoxGeometry(0.28, 0.36, halfD * 2 + 0.5);
     const northBeamGeo = new THREE.BoxGeometry(halfW * 2 + 0.5, 0.4, 0.35);
-    this.disposableGeometries.push(colGeo, baseGeo, trussGeo, northBeamGeo);
+    this.disposableGeometries.push(colGeo, baseGeo, northBeamGeo);
 
     for (let i = 0; i < colCount; i++) {
       const t = i / (colCount - 1);
@@ -181,11 +180,6 @@ export class WarehouseStructure {
       const southBase = new THREE.Mesh(baseGeo, basePlateMat);
       southBase.position.set(x, 0.225, centerZ + halfD);
       this.group.add(southBase);
-
-      // Subtle overhead roof purlin truss
-      const truss = new THREE.Mesh(trussGeo, columnMat);
-      truss.position.set(x, heightM - 0.2, centerZ);
-      this.group.add(truss);
     }
 
     // North & South top eave beams
